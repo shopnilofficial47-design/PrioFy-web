@@ -1,8 +1,10 @@
-// Sports Stream v4 — follows ratulxlive logic
-// Exact key → fuzzy teams → category fallback → Shaka/HLS player
+// v5 — friend-site logic:
+// Live = UTC time between start & end
+// Servers = match link_names to stream names (1 per name)
 
 let eventsData = [];
 let streamsData = {};
+let allNamedStreams = []; // flat list {name, tag, url, api}
 let statusFilter = 'all';
 let categoryFilter = 'all';
 let hlsInstance = null;
@@ -16,18 +18,17 @@ async function loadData() {
     ]);
     eventsData = await er.json();
     streamsData = await sr.json();
+    buildNamedIndex();
     buildCats();
     render();
   } catch (e) {
     console.error(e);
-    document.getElementById('events-list').innerHTML =
-      '<div class="empty">ডাটা লোড ব্যর্থ</div>';
+    document.getElementById('events-list').innerHTML = '<div class="empty">ডাটা লোড ব্যর্থ</div>';
   }
 }
 
 function ev(item) { return item.event || item; }
 
-// Same as friend's Uhe()
 function stripKey(links) {
   if (!links) return '';
   let s = String(links);
@@ -36,107 +37,119 @@ function stripKey(links) {
   return s;
 }
 
-function decodeKey(k) {
-  try {
-    const pad = '='.repeat((4 - (k.length % 4)) % 4);
-    return atob(k.replace(/-/g, '+').replace(/_/g, '/') + pad);
-  } catch {
-    return k;
+function norm(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+// Build searchable index of all streams by name
+function buildNamedIndex() {
+  allNamedStreams = [];
+  const playz = streamsData['playz-streams'] || {};
+  for (const k of Object.keys(playz)) {
+    for (const s of (playz[k].streams || [])) {
+      if (!s.link) continue;
+      allNamedStreams.push({
+        name: s.name || s.linkTag || 'Stream',
+        tag: s.linkTag || 'HD',
+        url: s.link.split('|')[0].trim(),
+        api: s.api || '',
+        key: k
+      });
+    }
+  }
+  const ls = streamsData['live-streams'] || {};
+  for (const id of Object.keys(ls)) {
+    for (const s of ls[id]) {
+      if (!s.link) continue;
+      allNamedStreams.push({
+        name: s.title || 'Stream',
+        tag: s.type === '1' ? 'FHD' : 'HD',
+        url: s.link.split('|')[0].trim(),
+        api: s.api || '',
+        key: 'live-' + id
+      });
+    }
   }
 }
 
-function addLink(list, seen, name, tag, url, api) {
-  if (!url) return;
-  const clean = url.split('|')[0].trim();
-  if (!clean || seen.has(clean)) return;
-  seen.add(clean);
-  list.push({ name: name || 'Stream', tag: tag || 'HD', url: clean, api: api || '' });
+function findStreamByName(label) {
+  const n = norm(label);
+  if (!n) return null;
+  // exact norm match
+  let hit = allNamedStreams.find(s => norm(s.name) === n);
+  if (hit) return hit;
+  // includes either way
+  hit = allNamedStreams.find(s => {
+    const sn = norm(s.name);
+    return sn.includes(n) || n.includes(sn);
+  });
+  return hit || null;
 }
 
 function getStreamLinks(e) {
   const list = [];
   const seen = new Set();
+
   const playz = streamsData['playz-streams'] || {};
   const key = stripKey(e.links);
 
-  // 1) Exact key (friend's method)
+  // 1) Exact playz key — use those streams first
   if (key && playz[key] && playz[key].streams) {
-    playz[key].streams.forEach(s =>
-      addLink(list, seen, s.name || s.linkTag, s.linkTag, s.link, s.api)
-    );
-  }
-
-  // 2) Fuzzy: both team names inside decoded key
-  if (list.length === 0) {
-    const a = (e.teamAName || '').toLowerCase();
-    const b = (e.teamBName || '').toLowerCase();
-    if (a.length > 1 && b.length > 1) {
-      for (const k of Object.keys(playz)) {
-        const dec = decodeKey(k).toLowerCase();
-        if (dec.includes(a) && dec.includes(b) && playz[k].streams) {
-          playz[k].streams.forEach(s =>
-            addLink(list, seen, s.name || s.linkTag, s.linkTag, s.link, s.api)
-          );
-          break;
-        }
-      }
+    for (const s of playz[key].streams) {
+      if (!s.link) continue;
+      const url = s.link.split('|')[0].trim();
+      if (seen.has(url)) continue;
+      seen.add(url);
+      list.push({
+        name: s.name || s.linkTag || 'Stream',
+        tag: s.linkTag || 'HD',
+        url,
+        api: s.api || ''
+      });
     }
   }
 
-  // 3) Single-team / eventName fuzzy
-  if (list.length === 0) {
-    const terms = [e.teamAName, e.teamBName, e.eventName]
-      .filter(t => t && t.length > 3)
-      .map(t => t.toLowerCase());
-    for (const k of Object.keys(playz)) {
-      const dec = decodeKey(k).toLowerCase();
-      if (terms.some(t => dec.includes(t)) && playz[k].streams) {
-        playz[k].streams.forEach(s =>
-          addLink(list, seen, s.name || s.linkTag, s.linkTag, s.link, s.api)
-        );
-        if (list.length >= 3) break;
-      }
+  // 2) For each link_name, find matching stream by name (friend method)
+  const names = e.link_names || [];
+  for (const ln of names) {
+    const label = typeof ln === 'string' ? ln : (ln.name || '');
+    const tag = typeof ln === 'object' ? (ln.tag || 'HD') : 'HD';
+    if (!label) continue;
+    const hit = findStreamByName(label);
+    if (hit && !seen.has(hit.url)) {
+      seen.add(hit.url);
+      list.push({ name: label, tag: tag || hit.tag, url: hit.url, api: hit.api });
+    } else if (!hit) {
+      // show label without url only if we have nothing yet from key
+      // skip empty to avoid clutter
     }
-  }
-
-  // 4) Category fallback from live-streams
-  if (list.length === 0 && streamsData['live-streams']) {
-    const cat = (e.category || '').toLowerCase();
-    const all = Object.values(streamsData['live-streams']).flat();
-    let re = /willow|sony|fancode|tnt|sky|bein|espn|dazn|fox|apple|paramount|fubo/i;
-    if (cat.includes('cricket')) re = /willow|sony|fancode|sky.*cric|fox.*cric|tapmad/i;
-    if (cat.includes('motor') || cat.includes('formula') || cat.includes('moto'))
-      re = /sky|f1|tnt|apple|moto|spor/i;
-    if (cat.includes('box') || cat.includes('wwe') || cat.includes('aew'))
-      re = /wwe|aew|tnt|fox|raw|nxt/i;
-    all.forEach(s => {
-      if (s.link && re.test(s.title || ''))
-        addLink(list, seen, s.title, s.type === '1' ? 'FHD' : 'HD', s.link, s.api);
-    });
-  }
-
-  // 5) Labels only
-  if (list.length === 0 && e.link_names) {
-    e.link_names.forEach((ln, i) => {
-      const name = typeof ln === 'string' ? ln : (ln.name || 'Link ' + (i + 1));
-      const tag = typeof ln === 'object' ? (ln.tag || 'HD') : 'HD';
-      list.push({ name, tag, url: null, api: '' });
-    });
   }
 
   return list;
 }
 
-function isLive(e) {
-  return e.visible === true;
+// Live = current UTC within [start, end]
+function getTimeWindow(e) {
+  if (!e.date || !e.time) return { start: null, end: null };
+  const [d, m, y] = e.date.split('/');
+  const start = new Date(`${y}-${m}-${d}T${e.time}Z`);
+  let end = null;
+  if (e.end_time) {
+    const ed = e.end_date || e.date;
+    const [d2, m2, y2] = ed.split('/');
+    end = new Date(`${y2}-${m2}-${d2}T${e.end_time}Z`);
+  } else {
+    // default 4h window if no end
+    end = new Date(start.getTime() + 4 * 3600 * 1000);
+  }
+  return { start, end };
 }
 
-function parseStart(e) {
-  if (!e.date || !e.time) return null;
-  const [d, m, y] = e.date.split('/');
-  // API stores times in a US-oriented zone; treat as UTC-4 for elapsed display
-  // But visible flag is authoritative for Live vs Upcoming
-  return new Date(`${y}-${m}-${d}T${e.time}-04:00`);
+function isLive(e) {
+  const { start, end } = getTimeWindow(e);
+  if (!start) return e.visible === true;
+  const now = Date.now();
+  return now >= start.getTime() && now <= end.getTime();
 }
 
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -149,7 +162,7 @@ function fmtTime(t) {
   if (!t) return '';
   const [h, m] = t.split(':');
   const hr = parseInt(h, 10);
-  return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'} UTC`;
 }
 
 function buildCats() {
@@ -195,7 +208,7 @@ function render() {
 
   box.innerHTML = rows.map((r, idx) => {
     const e = r.e;
-    const start = parseStart(e);
+    const { start } = getTimeWindow(e);
     let mid = '';
     if (r.live) {
       const elapsed = start ? now - start.getTime() : 0;
@@ -203,6 +216,7 @@ function render() {
     } else {
       mid = `<div class="upcoming-time">${fmtTime(e.time)}</div>`;
     }
+    const serverCount = (e.link_names || []).length || 0;
     return `<div class="event-card ${r.live ? 'live-card' : ''}" onclick="openModal(${idx})">
       <div class="event-top">
         ${e.eventLogo ? `<img src="${e.eventLogo}" onerror="this.style.display='none'">` : ''}
@@ -221,7 +235,7 @@ function render() {
       </div>
       <div class="event-bottom">
         <span>${e.date || ''}</span>
-        <span>${(e.link_names || []).length || 0} servers</span>
+        <span>${serverCount} servers</span>
       </div>
     </div>`;
   }).join('');
@@ -247,24 +261,18 @@ async function playStream(url, name, api) {
   status.textContent = 'Loading… ' + (name || '');
   status.classList.add('show');
 
-  const isM3u8 = /\.m3u8/i.test(url);
-  const isMpd = /\.mpd/i.test(url);
-
   try {
     if (window.shaka) {
       shaka.polyfill.installAll();
-      if (!shaka.Player.isBrowserSupported()) throw new Error('no shaka');
       shakaPlayer = new shaka.Player(video);
       shakaPlayer.addEventListener('error', (ev) => {
         console.error(ev.detail);
         status.textContent = 'Failed — try another link or VLC';
       });
-      if (api && api.includes(':') && !api.includes('http')) {
-        const parts = api.split(':');
-        if (parts.length >= 2) {
-          const kid = parts[0].trim();
-          const key = parts[1].trim();
-          shakaPlayer.configure({ drm: { clearKeys: { [kid]: key } } });
+      if (api && api.includes(':') && api.length < 80 && !api.includes('http')) {
+        const [kid, key] = api.split(':');
+        if (kid && key) {
+          shakaPlayer.configure({ drm: { clearKeys: { [kid.trim()]: key.trim() } } });
         }
       }
       await shakaPlayer.load(url);
@@ -273,11 +281,10 @@ async function playStream(url, name, api) {
       return;
     }
   } catch (err) {
-    console.warn('Shaka failed', err);
+    console.warn('Shaka error', err);
   }
 
-  // HLS.js fallback
-  if (isM3u8 && window.Hls && Hls.isSupported()) {
+  if (/\.m3u8/i.test(url) && window.Hls && Hls.isSupported()) {
     hlsInstance = new Hls({ enableWorker: true });
     hlsInstance.loadSource(url);
     hlsInstance.attachMedia(video);
@@ -300,7 +307,7 @@ async function playStream(url, name, api) {
     return;
   }
 
-  status.textContent = 'Opening link…';
+  status.textContent = 'Opening externally…';
   window.open(url, '_blank');
 }
 
@@ -316,21 +323,19 @@ function openModal(idx) {
   const links = getStreamLinks(e);
   const box = document.getElementById('modal-links');
   if (!links.length) {
-    box.innerHTML = '<p style="color:var(--muted);padding:12px 0">এই ম্যাচের স্ট্রিম API-তে এখনো যোগ হয়নি</p>';
+    box.innerHTML = '<p style="color:var(--muted);padding:12px 0">এই ম্যাচের সার্ভার লিংক এখনো যোগ হয়নি</p>';
   } else {
-    box.innerHTML = links.map(l => {
-      if (!l.url) {
-        return `<div class="stream-link" style="opacity:.5"><span class="name">${l.name}</span><span class="tag">${l.tag}</span></div>`;
-      }
-      return `<a class="stream-link" href="javascript:void(0)"
-        data-url="${l.url.replace(/"/g, '&quot;')}"
-        data-name="${(l.name || '').replace(/"/g, '&quot;')}"
-        data-api="${(l.api || '').replace(/"/g, '&quot;')}"
-        onclick="onLinkClick(this)">
-        <span class="name">${l.name}</span>
-        <span class="tag">${l.tag}</span>
-      </a>`;
-    }).join('');
+    box.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px">Available Servers (' + links.length + ')</div>' +
+      links.map(l => {
+        return `<a class="stream-link" href="javascript:void(0)"
+          data-url="${l.url.replace(/"/g, '&quot;')}"
+          data-name="${(l.name || '').replace(/"/g, '&quot;')}"
+          data-api="${(l.api || '').replace(/"/g, '&quot;')}"
+          onclick="onLinkClick(this)">
+          <span class="name">▶ ${l.name}</span>
+          <span class="tag">${l.tag}</span>
+        </a>`;
+      }).join('');
   }
   document.getElementById('stream-modal').classList.remove('hidden');
 }
