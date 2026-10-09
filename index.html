@@ -1,269 +1,72 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priofy Live Sports</title>
-    <!-- আইকনের জন্য FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { background: #0b0f12; color: #fff; font-family: sans-serif; margin:0; padding:0; padding-bottom:20px;}
-        
-        /* Header Design */
-        .header { display: flex; justify-content: space-between; padding: 15px; background: #0b0f12; align-items: center; }
-        .logo { font-size: 24px; font-weight: bold; font-style: italic; color: #fff; }
-        .icons { font-size: 18px; color: #fff; display: flex; gap: 15px; cursor: pointer; }
-        
-        /* Marquee Ticker */
-        .ticker { background: #141a1f; border: 1px solid #1a6b46; border-radius: 5px; margin: 10px 15px; padding: 5px; font-size: 12px; color: #88929e; }
-        
-        /* Category Scroll */
-        .categories { display: flex; overflow-x: auto; gap: 15px; padding: 10px 15px; }
-        .categories::-webkit-scrollbar { display: none; }
-        .cat-item { text-align: center; cursor: pointer; min-width: 50px; position: relative; }
-        .cat-icon { width: 45px; height: 45px; background: #1f272d; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 5px; border: 2px solid transparent; transition: 0.2s;}
-        .cat-item.active .cat-icon { border-color: #2cb36a; color: #fff; }
-        .cat-item .fa-fw { color: #88929e; font-size: 18px; }
-        .cat-item.active .fa-fw { color: #fff; }
-        .cat-name { font-size: 12px; color: #88929e; }
-        .cat-item.active .cat-name { color: #fff; font-weight: bold; }
-        .badge { position: absolute; top: -5px; right: 0; background: red; color: white; font-size: 10px; padding: 2px 5px; border-radius: 10px; font-weight: bold; }
-
-        /* Filter Buttons */
-        .filters { display: flex; gap: 10px; padding: 10px 15px; }
-        .btn { background: #1f272d; color: #88929e; border: none; padding: 6px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        .btn.active { background: #183d2e; border: 1px solid #1a6b46; color: #fff; }
-
-        /* Main Event Cards */
-        .container { padding: 0 15px; }
-        .card { background: #141a1f; border: 1px solid #1a6b46; border-radius: 8px; margin-bottom: 15px; padding: 15px; cursor: pointer; }
-        .card-title { text-align: center; font-size: 11px; color: #fff; margin-bottom: 15px; }
-        .card-title i { color: #2cb36a; }
-        .match-row { display: flex; justify-content: space-between; align-items: center; }
-        .team { text-align: center; width: 30%; }
-        .team img { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #fff; padding: 2px; margin-bottom: 5px; }
-        .team-name { font-size: 12px; font-weight: bold; color: #fff; }
-        
-        /* Time & Status */
-        .status-col { text-align: center; width: 40%; }
-        .time { font-size: 16px; font-weight: bold; color: #08C7D6; }
-        .date { font-size: 10px; color: #88929e; margin: 3px 0; }
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; background: rgba(44,179,106,0.15); color: #2cb36a; }
-        .status-live { background: rgba(219,68,55,0.15); color: #db4437; }
-
-        /* Stream Links Container */
-        .streams { display: none; flex-wrap: wrap; gap: 10px; margin-top: 15px; border-top: 1px solid #1e2933; padding-top: 15px; }
-        .stream-link { flex: 1 1 calc(50% - 5px); background: #1f272d; color: #fff; text-align: center; padding: 10px; border-radius: 4px; font-size: 12px; font-weight: bold; text-decoration: none; border-left: 3px solid #2cb36a; }
-        
-        #loader { text-align: center; padding: 50px; color: #2cb36a; font-size: 14px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Priofy Live Sports</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>" />
+  <!-- HLS Player Script -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Top Bar -->
-    <div class="header">
-        <div style="display:flex; gap:15px; align-items:center;">
-            <i class="fas fa-bars" style="font-size:18px;"></i>
-            <div class="logo">priofy</div>
-        </div>
-        <div class="icons">
-            <i class="fas fa-bell"></i>
-            <i class="far fa-star"></i>
-            <i class="fas fa-sync-alt" onclick="initApp()"></i>
-            <i class="fas fa-search"></i>
-        </div>
+  <header class="header">
+    <div class="container">
+      <h1 class="logo"><i>priofy</i></h1>
+      <nav class="nav">
+        <button class="nav-btn active" data-tab="events">লাইভ ম্যাচ</button>
+        <button class="nav-btn" data-tab="channels">চ্যানেল</button>
+      </nav>
     </div>
+  </header>
 
-    <!-- Ticker -->
-    <div class="ticker">
-        <marquee>🌟 Priofy better! Enjoy sports, live events, and entertainment!</marquee>
+  <main class="container">
+    <section id="events-tab" class="tab-content active">
+      <div class="filters">
+        <button class="filter-btn active" data-category="all">সব</button>
+        <button class="filter-btn" data-category="Cricket">ক্রিকেট</button>
+        <button class="filter-btn" data-category="Football">ফুটবল</button>
+        <button class="filter-btn" data-category="Basketball">বাস্কেটবল</button>
+        <button class="filter-btn" data-category="Hockey">হকি</button>
+        <button class="filter-btn" data-category="Motorsport">মোটরসপোর্ট</button>
+        <button class="filter-btn" data-category="Boxing">বক্সিং/রেসলিং</button>
+        <button class="filter-btn" data-category="Others">অন্যান্য</button>
+      </div>
+      <div id="events-list" class="events-grid">
+        <div class="loading"><i class="fas fa-spinner fa-spin"></i> লোড হচ্ছে...</div>
+      </div>
+    </section>
+
+    <section id="channels-tab" class="tab-content">
+      <div id="channels-list" class="channels-grid">
+        <div class="loading"><i class="fas fa-spinner fa-spin"></i> লোড হচ্ছে...</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Stream Modal with Player -->
+  <div id="stream-modal" class="modal hidden">
+    <div class="modal-content modal-player">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <h2 id="modal-title">স্ট্রিম</h2>
+
+      <div id="player-wrap" class="player-wrap hidden">
+        <video id="video-player" controls playsinline></video>
+        <div id="player-status" class="player-status"></div>
+      </div>
+
+      <div id="modal-links" class="stream-links"></div>
+      <p class="modal-note">লিংক ক্লিক করলে প্লেয়ারে চলবে। না চললে VLC / MX Player এ লিংক ওপেন করুন।</p>
     </div>
+  </div>
 
-    <!-- Categories Row -->
-    <div class="categories" id="categories"></div>
-
-    <!-- Live / Upcoming Filters -->
-    <div class="filters">
-        <button class="btn active" id="btn-all" onclick="filterData('All')">✓ All</button>
-        <button class="btn" id="btn-live" onclick="filterData('Live')">Live</button>
-        <button class="btn" id="btn-upcoming" onclick="filterData('Upcoming')">Upcoming</button>
+  <footer class="footer">
+    <div class="container">
+      <p>Priofy Sports • GitHub + Vercel</p>
     </div>
+  </footer>
 
-    <!-- Cards Container -->
-    <div class="container" id="content">
-        <!-- Loader Display -->
-        <div id="loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>ডেটা লোড হচ্ছে...</div>
-    </div>
-
-    <script>
-        // আপনার ডাইরেক্ট API লিংকগুলো (এখানে প্রক্সি বা হাবিজাবি কিচ্ছু নেই)
-        const EVENT_API = 'https://ratulxadia-playz-cats-event.hf.space/api/events';
-        const STREAM_API = 'https://adiaxratul-playz-link-send.hf.space/api/live-stream';
-
-        let eventList = [];
-        let streamObj = {};
-        let currentCat = 'All';
-        let currentType = 'All';
-
-        // সিম্পল ডাটা ফেচিং ফাংশন
-        async function initApp() {
-            document.getElementById('content').innerHTML = '<div id="loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>ডেটা লোড হচ্ছে...</div>';
-            try {
-                // ১. ইভেন্ট ডাটা আনবে
-                const res1 = await fetch(EVENT_API);
-                const rawEvents = await res1.json();
-                
-                // ২. স্ট্রিম লিংকের ডাটা আনবে
-                const res2 = await fetch(STREAM_API);
-                streamObj = await res2.json();
-
-                // ৩. শুধুমাত্র visible ডাটা গুলো আলাদা করে নেবে
-                eventList = Array.isArray(rawEvents) ? rawEvents.filter(x => x && x.event && x.event.visible) : [];
-                
-                renderCats();
-                renderList();
-            } catch (e) {
-                // কোনো কারণে API বন্ধ থাকলে স্ক্রিনে তা দেখাবে
-                document.getElementById('content').innerHTML = `<div style="text-align:center;color:#ff4d4d;padding:20px;">লোডিং ফেইল হয়েছে!<br>সার্ভার থেকে ডেটা আসছে না।</div>`;
-            }
-        }
-
-        // ক্যাটাগরি তৈরি করার ফাংশন
-        function renderCats() {
-            let counts = { 'All': eventList.length };
-            eventList.forEach(item => {
-                let c = item.event.category || 'Others';
-                counts[c] = (counts[c] || 0) + 1;
-            });
-
-            let html = `<div class="cat-item ${currentCat === 'All' ? 'active' : ''}" onclick="setCat('All')">
-                            <div class="badge">${counts['All']}</div>
-                            <div class="cat-icon"><i class="fas fa-globe fa-fw"></i></div>
-                            <div class="cat-name">All</div>
-                        </div>`;
-            
-            Object.keys(counts).forEach(c => {
-                if (c !== 'All') {
-                    html += `<div class="cat-item ${currentCat === c ? 'active' : ''}" onclick="setCat('${c}')">
-                                <div class="badge">${counts[c]}</div>
-                                <div class="cat-icon"><i class="fas fa-trophy fa-fw"></i></div>
-                                <div class="cat-name">${c}</div>
-                            </div>`;
-                }
-            });
-            document.getElementById('categories').innerHTML = html;
-        }
-
-        function setCat(c) {
-            currentCat = c;
-            renderCats();
-            renderList();
-        }
-
-        // লাইভ/আপকামিং ফিল্টার ফাংশন
-        function filterData(type) {
-            currentType = type;
-            document.querySelectorAll('.btn').forEach(b => { 
-                b.classList.remove('active'); 
-                b.innerText = b.innerText.replace('✓ ', ''); 
-            });
-            let activeBtn = document.getElementById('btn-' + type.toLowerCase());
-            activeBtn.classList.add('active');
-            activeBtn.innerText = '✓ ' + type;
-            renderList();
-        }
-
-        // কার্ড রেন্ডার ফাংশন (যেখানে কোড ক্র্যাশ করতো, সেটাকে সেইফ করা হয়েছে)
-        function renderList() {
-            let html = '';
-            eventList.forEach(item => {
-                const ev = item.event;
-                
-                // ক্যাটাগরি ফিল্টার চেক
-                if (currentCat !== 'All' && ev.category !== currentCat) return;
-
-                let statusState = 'upcoming';
-                let statusText = 'Upcoming';
-                let timeShow = ev.time || 'TBA';
-                
-                // টাইমার লজিক (ভুল ফরম্যাট আসলেও কোড ক্র্যাশ করবে না)
-                try {
-                    let dParts = (ev.date||'').split('/');
-                    let tParts = (ev.time||'').split(':');
-                    
-                    if(dParts.length === 3 && tParts.length >= 2) {
-                        let matchDate = new Date(`${dParts[2]}-${dParts[1]}-${dParts[0]}T${tParts[0]}:${tParts[1]}:00`);
-                        let diff = matchDate - new Date();
-                        
-                        if(diff <= 0 && diff > -10800000) {
-                            statusState = 'live'; statusText = '🔴 LIVE';
-                        } else if(diff > 0) {
-                            let mins = Math.floor(diff / 60000);
-                            if(mins < 60) statusText = mins + 'm left';
-                            else statusText = Math.floor(mins/60) + 'h ' + (mins%60) + 'm left';
-                        } else {
-                            statusState = 'finished'; statusText = 'Finished';
-                        }
-                        
-                        // Time Format to AM/PM
-                        let h = parseInt(tParts[0]);
-                        let ampm = h >= 12 ? 'PM' : 'AM';
-                        h = h % 12 || 12;
-                        timeShow = `${h}:${tParts[1]} ${ampm}`;
-                    }
-                } catch(e) { } // ডেট ভুল থাকলেও স্কিপ করে যাবে
-
-                // টাইপ ফিল্টার (Live/Upcoming)
-                if (currentType === 'Live' && statusState !== 'live') return;
-                if (currentType === 'Upcoming' && statusState !== 'upcoming') return;
-
-                // ID এক্সট্রাক্ট করে লিংক খোঁজা
-                let sId = null;
-                try { sId = ev.links.split('pro/')[1].split('.txt')[0]; } catch(e){}
-                
-                let streamsHtml = '';
-                if (sId && streamObj[sId] && streamObj[sId].streams) {
-                    streamObj[sId].streams.forEach(s => {
-                        if(s.link) {
-                            streamsHtml += `<a href="${s.link}" target="_blank" class="stream-link">${s.name}</a>`;
-                        }
-                    });
-                }
-                
-                if(!streamsHtml) streamsHtml = '<div style="width:100%;text-align:center;color:#db4437;font-size:12px;">এই মুহূর্তে কোনো লিংক নেই</div>';
-
-                // কার্ডের ডিজাইন তৈরি
-                html += `
-                    <div class="card" onclick="this.querySelector('.streams').style.display = this.querySelector('.streams').style.display === 'flex' ? 'none' : 'flex'">
-                        <div class="card-title"><i class="fas fa-satellite-dish"></i> ${ev.category || 'Sports'} | ${ev.eventName}</div>
-                        <div class="match-row">
-                            <div class="team">
-                                <img src="${ev.teamAFlag}" onerror="this.src='https://via.placeholder.com/40'">
-                                <div class="team-name">${ev.teamAName}</div>
-                            </div>
-                            <div class="status-col">
-                                ${statusState === 'live' 
-                                    ? `<div class="status-badge status-live">🔴 LIVE</div>` 
-                                    : `<div class="time">${timeShow}</div>
-                                       <div class="date">${ev.date}</div>
-                                       <div class="status-badge">${statusText}</div>`
-                                }
-                            </div>
-                            <div class="team">
-                                <img src="${ev.teamBFlag}" onerror="this.src='https://via.placeholder.com/40'">
-                                <div class="team-name">${ev.teamBName}</div>
-                            </div>
-                        </div>
-                        <!-- ভেতরে থাকা লিংকগুলো (ক্লিক করলে বের হবে) -->
-                        <div class="streams">${streamsHtml}</div>
-                    </div>
-                `;
-            });
-            
-            document.getElementById('content').innerHTML = html || '<div style="text-align:center;color:#88929e;padding:20px;">কোনো ইভেন্ট নেই</div>';
-        }
-
-        // শুরুতে অ্যাপ লোড করা
-        initApp();
-    </script>
+  <script src="app.js"></script>
 </body>
 </html>
