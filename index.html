@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Sports Stream Live</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.11.7/shaka-player.compiled.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <h1 class="logo">🏆 Sports Stream</h1>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Status filters -->
+    <div class="status-filters">
+      <button class="status-btn active" data-status="all">All <span id="count-all">0</span></button>
+      <button class="status-btn" data-status="live">Live <span id="count-live">0</span></button>
+      <button class="status-btn" data-status="upcoming">Upcoming <span id="count-upcoming">0</span></button>
+    </div>
+
+    <!-- Category filters -->
+    <div class="filters" id="cat-filters">
+      <button class="filter-btn active" data-category="all">All Sports</button>
+    </div>
+
+    <div id="events-list" class="events-grid">
+      <div class="loading">লোড হচ্ছে...</div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div id="stream-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <h2 id="modal-title">Stream</h2>
+      <div id="player-wrap" class="player-wrap hidden">
+        <video id="video-player" controls playsinline></video>
+        <div id="player-status" class="player-status"></div>
+      </div>
+      <div id="modal-links" class="stream-links"></div>
+      <p class="modal-note">কিছু লিংক DRM/VPN চায়। না চললে লিংক কপি করে VLC তে খুলুন।</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
