@@ -1,5 +1,5 @@
 // ======================
-// Sports Stream App v2
+// Sports Stream App v2 (Fixed Loading Issues)
 // Match-specific streams + HLS Player
 // ======================
 
@@ -8,20 +8,47 @@ let streamsData = {};
 let currentCategory = 'all';
 let hlsInstance = null;
 
-// --- Load Data (Live APIs with Firebase Fallback) ---
-async function loadData() {
+// --- Bulletproof Fetch Logic (CORS & Sleep Mode Safe) ---
+async function safeFetch(url) {
   try {
-    const [eventsRes, streamsRes] = await Promise.all([
-      fetch('https://ratulxadia-playz-cats-event.hf.space/api/events'),
-      fetch('https://ratul-liv-default-rtdb.asia-southeast1.firebasedatabase.app/.json')
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Direct connection failed');
+    return await response.json();
+  } catch (error) {
+    console.warn('Direct fetch failed. Trying proxy for:', url);
+    // ব্রাউজার ব্লক করলে বা সার্ভার ঘুমালে AllOrigins প্রক্সি দিয়ে ডেটা আনবে
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const proxyResponse = await fetch(proxyUrl);
+    if (!proxyResponse.ok) throw new Error('Proxy connection also failed');
+    return await proxyResponse.json();
+  }
+}
+
+// --- Load Data ---
+async function loadData() {
+  const eventsContainer = document.getElementById('events-list');
+  eventsContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> সার্ভার থেকে ডেটা আসছে... <br><small style="color:#08c7d6">(প্রথমবার ১ মিনিট পর্যন্ত সময় লাগতে পারে)</small></div>';
+
+  try {
+    // যেকোনো একটা ফেইল করলে যেন অন্যটা না আটকায়, তাই আলাদাভাবে হ্যান্ডেল করা হলো
+    const [eventsRes, streamsRes] = await Promise.allSettled([
+      safeFetch('https://ratulxadia-playz-cats-event.hf.space/api/events'),
+      safeFetch('https://ratul-liv-default-rtdb.asia-southeast1.firebasedatabase.app/.json')
     ]);
 
-    if (!eventsRes.ok || !streamsRes.ok) {
-      throw new Error('API লোড করতে সমস্যা হয়েছে');
+    // ইভেন্ট ডেটা চেক করা
+    if (eventsRes.status === 'fulfilled' && eventsRes.value) {
+      eventsData = Array.isArray(eventsRes.value) ? eventsRes.value : [];
+    } else {
+      throw new Error('Events API failed to load');
     }
 
-    eventsData = await eventsRes.json();
-    streamsData = await streamsRes.json();
+    // স্ট্রিম ডেটা চেক করা
+    if (streamsRes.status === 'fulfilled' && streamsRes.value) {
+      streamsData = streamsRes.value;
+    } else {
+      streamsData = {}; // স্ট্রিম না আসলেও যেন সাইট ওপেন হয়
+    }
 
     if (streamsData.homepage_notice) {
       const notice = document.createElement('div');
@@ -35,8 +62,8 @@ async function loadData() {
     renderChannels();
   } catch (err) {
     console.error(err);
-    document.getElementById('events-list').innerHTML =
-      '<div class="empty" style="color:#ff4757;"><i class="fas fa-exclamation-triangle"></i> ডাটা লোড করতে সমস্যা হয়েছে। ইন্টারনেট চেক করুন।</div>';
+    eventsContainer.innerHTML =
+      '<div class="empty" style="color:#ff4757;"><i class="fas fa-exclamation-triangle"></i> ডেটা লোড করতে সমস্যা হয়েছে। দয়া করে পেজটি রিফ্রেশ করুন।</div>';
   }
 }
 
@@ -67,17 +94,17 @@ function getStreamLinks(event) {
     links.push({ name: name || 'Stream', tag: tag || 'HD', url: clean });
   }
 
+  // 1. Primary Match
   const key = extractKeyFromLinks(event.links);
   const playz = streamsData['playz-streams'] || {};
 
-  // 1. Exact Match
   if (key && playz[key] && playz[key].streams) {
     playz[key].streams.forEach(function(s) {
       add(s.name || s.linkTag || 'Stream', s.linkTag || 'HD', s.link);
     });
   }
 
-  // 2. Fuzzy match (Name Matching)
+  // 2. Fuzzy match by name
   if (links.length === 0) {
     const terms = [event.teamAName || '', event.teamBName || '', event.eventName || '']
       .filter(function(t) { return t && t.length > 2; })
@@ -101,7 +128,7 @@ function getStreamLinks(event) {
     });
   }
 
-  // 3. Fallback Categories
+  // 3. Categories Fallback
   if (links.length === 0 && streamsData['live-streams']) {
     var cat = (event.category || '').toLowerCase();
     var allLive = Object.values(streamsData['live-streams']).flat();
@@ -160,6 +187,7 @@ function playStream(url, name) {
     hlsInstance.on(Hls.Events.ERROR, function(e, data) {
       if (data.fatal) {
         status.textContent = 'প্লেয়ারে সমস্যা। VLC / MX Player এ লিংক খুলুন।';
+        console.error('HLS error', data);
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -199,7 +227,10 @@ function renderEvents() {
 
   container.innerHTML = filtered.map(function(item, idx) {
     var e = item.event || item;
-    var live = e.visible === true;
+    // Safety check for empty events
+    if(!e) return '';
+    
+    var live = String(e.visible) === 'true'; // string parsing bug fixed
     var teamA = e.teamAName || 'Team A';
     var teamB = e.teamBName || 'Team B';
     var flagA = e.teamAFlag || '';
@@ -209,6 +240,7 @@ function renderEvents() {
     var category = e.category || '';
     var time = formatTime(e.time);
     var date = e.date || '';
+    var linkCount = (e.link_names || []).length || '?';
 
     return '<div class="event-card ' + (live ? 'live' : '') + '" data-idx="' + idx + '" onclick="openStreamModal(' + idx + ')">' +
       '<div class="event-header">' +
@@ -218,19 +250,19 @@ function renderEvents() {
       '</div>' +
       '<div class="teams">' +
         '<div class="team">' +
-          (flagA ? '<img class="team-flag" src="' + flagA + '" onerror="this.style.display=\'none\'">' : '') +
+          (flagA ? '<img class="team-flag" src="' + flagA + '" alt="' + teamA + '" onerror="this.src=\'https://via.placeholder.com/40\'">' : '') +
           '<span class="team-name">' + teamA + '</span>' +
         '</div>' +
         '<span class="vs">VS</span>' +
         '<div class="team">' +
-          (flagB ? '<img class="team-flag" src="' + flagB + '" onerror="this.style.display=\'none\'">' : '') +
+          (flagB ? '<img class="team-flag" src="' + flagB + '" alt="' + teamB + '" onerror="this.src=\'https://via.placeholder.com/40\'">' : '') +
           '<span class="team-name">' + teamB + '</span>' +
         '</div>' +
       '</div>' +
       '<div class="event-meta">' +
         '<span>' + date + ' • ' + time + '</span>' +
         '<span>' + (live ? '<span class="live-badge">LIVE</span> ' : '') +
-        '<span class="links-count" style="color:#08C7D6"><i class="fas fa-play-circle"></i> Watch</span></span>' +
+        '<span class="links-count">' + linkCount + ' লিংক</span></span>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -250,13 +282,13 @@ function renderChannels() {
   container.innerHTML = list.map(function(pair) {
     var key = pair[0], ch = pair[1];
     return '<div class="channel-card" onclick="openChannel(\'' + encodeURIComponent(ch.link || '') + '\', \'' + (ch.name || key).replace(/'/g, "\\'") + '\')">' +
-      (ch.logo ? '<img class="channel-logo" src="' + ch.logo + '" onerror="this.style.display=\'none\'">' : '<div class="channel-logo" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem">📺</div>') +
-      '<div class="channel-info"><h3>' + (ch.name || key) + '</h3><p>Live TV</p></div>' +
+      (ch.logo ? '<img class="channel-logo" src="' + ch.logo + '" alt="" onerror="this.style.display=\'none\'">' : '<div class="channel-logo" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem">📺</div>') +
+      '<div class="channel-info"><h3>' + (ch.name || key) + '</h3><p>স্পোর্টস চ্যানেল</p></div>' +
     '</div>';
   }).join('');
 }
 
-// --- Modal Functionality ---
+// --- Modal ---
 function openStreamModal(idx) {
   var filtered = eventsData;
   if (currentCategory !== 'all') {
@@ -284,7 +316,7 @@ function openStreamModal(idx) {
   var linksContainer = document.getElementById('modal-links');
 
   if (links.length === 0) {
-    linksContainer.innerHTML = '<p style="color:#ff4757; text-align:center; padding:10px;">এই ম্যাচের জন্য স্ট্রিম লিংক পাওয়া যায়নি</p>';
+    linksContainer.innerHTML = '<p style="color:var(--text-muted)">এই ম্যাচের জন্য স্ট্রিম লিংক পাওয়া যায়নি</p>';
   } else {
     linksContainer.innerHTML = links.map(function(l) {
       if (l.url) {
@@ -347,4 +379,6 @@ document.getElementById('stream-modal').addEventListener('click', function(e) {
   if (e.target.id === 'stream-modal') closeModal();
 });
 
+// স্টার্ট অ্যাপ
 loadData();
+        
