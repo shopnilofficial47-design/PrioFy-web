@@ -4,320 +4,266 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Priofy Live Sports</title>
+    <!-- আইকনের জন্য FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <style>
-        :root {
-            --bg-color: #0b0f12;
-            --card-bg: #141a1f;
-            --accent-green: #1a6b46;
-            --accent-light-green: #2cb36a;
-            --text-main: #ffffff;
-            --text-muted: #88929e;
-            --border-color: #1e2933;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-
-        body { background-color: var(--bg-color); color: var(--text-main); }
-
-        /* Header */
-        .app-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #0b0f12; }
-        .left-header { display: flex; align-items: center; gap: 15px; font-size: 20px; }
-        .logo { font-size: 24px; color: #fff; text-shadow: 2px 2px 0 #fbbf24; }
-        .right-header { display: flex; gap: 15px; font-size: 18px; color: #fff; cursor: pointer;}
-
-        /* Ticker */
-        .ticker-wrap { background: #0e151a; border: 1px solid var(--accent-green); padding: 5px; margin: 10px; border-radius: 5px; font-size: 13px; color: var(--text-muted); }
-
-        /* Categories */
-        .categories-container { display: flex; overflow-x: auto; padding: 10px 15px; gap: 15px; align-items: center; }
-        .categories-container::-webkit-scrollbar { display: none; }
-        .cat-item { display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; min-width: 60px; }
-        .cat-icon-wrap { width: 50px; height: 50px; background: #1f272d; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid transparent; transition: 0.3s; }
-        .cat-icon-wrap i { font-size: 20px; color: var(--text-muted); }
-        .cat-item.active .cat-icon-wrap { border-color: var(--accent-light-green); }
-        .cat-item.active .cat-icon-wrap i { color: var(--text-main); }
-        .cat-badge { position: absolute; top: -2px; right: 2px; background: red; color: white; font-size: 10px; font-weight: bold; border-radius: 10px; padding: 2px 6px; }
-        .cat-name { font-size: 12px; margin-top: 5px; color: var(--text-muted); font-weight: 500; }
+        body { background: #0b0f12; color: #fff; font-family: sans-serif; margin:0; padding:0; padding-bottom:20px;}
+        
+        /* Header Design */
+        .header { display: flex; justify-content: space-between; padding: 15px; background: #0b0f12; align-items: center; }
+        .logo { font-size: 24px; font-weight: bold; font-style: italic; color: #fff; }
+        .icons { font-size: 18px; color: #fff; display: flex; gap: 15px; cursor: pointer; }
+        
+        /* Marquee Ticker */
+        .ticker { background: #141a1f; border: 1px solid #1a6b46; border-radius: 5px; margin: 10px 15px; padding: 5px; font-size: 12px; color: #88929e; }
+        
+        /* Category Scroll */
+        .categories { display: flex; overflow-x: auto; gap: 15px; padding: 10px 15px; }
+        .categories::-webkit-scrollbar { display: none; }
+        .cat-item { text-align: center; cursor: pointer; min-width: 50px; position: relative; }
+        .cat-icon { width: 45px; height: 45px; background: #1f272d; border-radius: 50%; display: flex; justify-content: center; align-items: center; margin: 0 auto 5px; border: 2px solid transparent; transition: 0.2s;}
+        .cat-item.active .cat-icon { border-color: #2cb36a; color: #fff; }
+        .cat-item .fa-fw { color: #88929e; font-size: 18px; }
+        .cat-item.active .fa-fw { color: #fff; }
+        .cat-name { font-size: 12px; color: #88929e; }
         .cat-item.active .cat-name { color: #fff; font-weight: bold; }
+        .badge { position: absolute; top: -5px; right: 0; background: red; color: white; font-size: 10px; padding: 2px 5px; border-radius: 10px; font-weight: bold; }
 
-        /* Filters */
-        .filters-container { display: flex; gap: 10px; padding: 0 15px 15px; overflow-x: auto; }
-        .filters-container::-webkit-scrollbar { display: none; }
-        .filter-btn { background: #1f272d; color: var(--text-muted); border: none; padding: 6px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-        .filter-btn.active { background: #183d2e; color: #fff; border: 1px solid var(--accent-green); }
+        /* Filter Buttons */
+        .filters { display: flex; gap: 10px; padding: 10px 15px; }
+        .btn { background: #1f272d; color: #88929e; border: none; padding: 6px 15px; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        .btn.active { background: #183d2e; border: 1px solid #1a6b46; color: #fff; }
 
-        /* Loader */
-        .loader-container { text-align: center; padding: 40px 20px; }
-        .loader-container i { font-size: 30px; color: var(--accent-light-green); margin-bottom: 10px; }
-        .loader-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+        /* Main Event Cards */
+        .container { padding: 0 15px; }
+        .card { background: #141a1f; border: 1px solid #1a6b46; border-radius: 8px; margin-bottom: 15px; padding: 15px; cursor: pointer; }
+        .card-title { text-align: center; font-size: 11px; color: #fff; margin-bottom: 15px; }
+        .card-title i { color: #2cb36a; }
+        .match-row { display: flex; justify-content: space-between; align-items: center; }
+        .team { text-align: center; width: 30%; }
+        .team img { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #fff; padding: 2px; margin-bottom: 5px; }
+        .team-name { font-size: 12px; font-weight: bold; color: #fff; }
+        
+        /* Time & Status */
+        .status-col { text-align: center; width: 40%; }
+        .time { font-size: 16px; font-weight: bold; color: #08C7D6; }
+        .date { font-size: 10px; color: #88929e; margin: 3px 0; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; background: rgba(44,179,106,0.15); color: #2cb36a; }
+        .status-live { background: rgba(219,68,55,0.15); color: #db4437; }
 
-        /* Events Cards */
-        #events-container { padding: 0 15px 20px; display: flex; flex-direction: column; gap: 15px; }
-        .event-card { background: var(--card-bg); border: 1px solid var(--accent-green); border-radius: 10px; padding: 15px; cursor: pointer; }
-        .event-header { text-align: center; font-size: 12px; color: var(--text-main); font-weight: 600; margin-bottom: 15px; }
-        .event-header i { color: var(--accent-light-green); margin-right: 5px; }
-        .match-info { display: flex; justify-content: space-between; align-items: center; }
-        .team { text-align: center; flex: 1; }
-        .team img { width: 45px; height: 45px; border-radius: 50%; object-fit: contain; margin-bottom: 8px; background: #fff; padding: 2px;}
-        .team span { display: block; font-size: 13px; font-weight: bold; color: #fff; }
-
-        .status-box { flex: 1; text-align: center; }
-        .status-time { font-size: 16px; font-weight: bold; color: #08C7D6; }
-        .status-date { font-size: 11px; color: var(--text-muted); margin: 3px 0; }
-        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
-        .badge-upcoming { background: rgba(44, 179, 106, 0.15); color: var(--accent-light-green); }
-        .badge-live { background: rgba(219, 68, 55, 0.15); color: #db4437; }
-
-        /* Streams Box */
-        .streams-box { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); }
-        .stream-btn { display: inline-block; width: calc(50% - 5px); background: #1f272d; color: #fff; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border-left: 3px solid var(--accent-light-green); }
-        .stream-btn:nth-child(even) { margin-left: 5px; }
+        /* Stream Links Container */
+        .streams { display: none; flex-wrap: wrap; gap: 10px; margin-top: 15px; border-top: 1px solid #1e2933; padding-top: 15px; }
+        .stream-link { flex: 1 1 calc(50% - 5px); background: #1f272d; color: #fff; text-align: center; padding: 10px; border-radius: 4px; font-size: 12px; font-weight: bold; text-decoration: none; border-left: 3px solid #2cb36a; }
+        
+        #loader { text-align: center; padding: 50px; color: #2cb36a; font-size: 14px; }
     </style>
 </head>
 <body>
-
-    <!-- Header -->
-    <header class="app-header">
-        <div class="left-header">
-            <i class="fas fa-bars"></i>
-            <h2 class="logo"><i>priofy</i></h2>
+    <!-- Top Bar -->
+    <div class="header">
+        <div style="display:flex; gap:15px; align-items:center;">
+            <i class="fas fa-bars" style="font-size:18px;"></i>
+            <div class="logo">priofy</div>
         </div>
-        <div class="right-header">
+        <div class="icons">
             <i class="fas fa-bell"></i>
             <i class="far fa-star"></i>
-            <i class="fas fa-sync-alt" onclick="fetchData()"></i>
+            <i class="fas fa-sync-alt" onclick="initApp()"></i>
             <i class="fas fa-search"></i>
         </div>
-    </header>
-
-    <div class="ticker-wrap">
-        <marquee>🌟 Enjoy sports, live events, and entertainment seamlessly!</marquee>
     </div>
 
-    <!-- Categories -->
-    <div class="categories-container" id="categories-container"></div>
-
-    <!-- Filters -->
-    <div class="filters-container">
-        <button class="filter-btn active" id="filter-all"><i class="fas fa-check"></i> All</button>
-        <button class="filter-btn" id="filter-live">Live</button>
-        <button class="filter-btn" id="filter-upcoming">Upcoming</button>
+    <!-- Ticker -->
+    <div class="ticker">
+        <marquee>🌟 Priofy better! Enjoy sports, live events, and entertainment!</marquee>
     </div>
 
-    <!-- Main Content -->
-    <main id="events-container">
-        <div class="loader-container" id="loader">
-            <i class="fas fa-spinner fa-spin"></i>
-            <div class="loader-text">
-                ডেটা লোড হচ্ছে...<br>
-                <small style="color:#08C7D6">(সার্ভার স্লিপ মোডে থাকলে ১ মিনিট সময় লাগতে পারে)</small>
-            </div>
-        </div>
-    </main>
+    <!-- Categories Row -->
+    <div class="categories" id="categories"></div>
 
-    <!-- Script Logic -->
+    <!-- Live / Upcoming Filters -->
+    <div class="filters">
+        <button class="btn active" id="btn-all" onclick="filterData('All')">✓ All</button>
+        <button class="btn" id="btn-live" onclick="filterData('Live')">Live</button>
+        <button class="btn" id="btn-upcoming" onclick="filterData('Upcoming')">Upcoming</button>
+    </div>
+
+    <!-- Cards Container -->
+    <div class="container" id="content">
+        <!-- Loader Display -->
+        <div id="loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>ডেটা লোড হচ্ছে...</div>
+    </div>
+
     <script>
-        const API_EVENTS = 'https://ratulxadia-playz-cats-event.hf.space/api/events';
-        const API_STREAMS = 'https://adiaxratul-playz-link-send.hf.space/api/live-stream';
+        // আপনার ডাইরেক্ট API লিংকগুলো (এখানে প্রক্সি বা হাবিজাবি কিচ্ছু নেই)
+        const EVENT_API = 'https://ratulxadia-playz-cats-event.hf.space/api/events';
+        const STREAM_API = 'https://adiaxratul-playz-link-send.hf.space/api/live-stream';
 
-        let allEvents = [];
-        let streamsData = {};
-        let currentCategory = 'All';
-        let currentFilter = 'All';
+        let eventList = [];
+        let streamObj = {};
+        let currentCat = 'All';
+        let currentType = 'All';
 
-        async function fetchData() {
-            const container = document.getElementById('events-container');
-            container.innerHTML = `
-                <div class="loader-container" id="loader">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <div class="loader-text">
-                        ডেটা লোড হচ্ছে...<br>
-                        <small style="color:#08C7D6">(Hugging Face সার্ভার স্টার্ট হচ্ছে, দয়া করে অপেক্ষা করুন)</small>
-                    </div>
-                </div>`;
-
+        // সিম্পল ডাটা ফেচিং ফাংশন
+        async function initApp() {
+            document.getElementById('content').innerHTML = '<div id="loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>ডেটা লোড হচ্ছে...</div>';
             try {
-                // Fetch Data from APIs
-                const [evRes, strRes] = await Promise.all([
-                    fetch(API_EVENTS, { headers: { 'Accept': 'application/json' } }),
-                    fetch(API_STREAMS, { headers: { 'Accept': 'application/json' } })
-                ]);
+                // ১. ইভেন্ট ডাটা আনবে
+                const res1 = await fetch(EVENT_API);
+                const rawEvents = await res1.json();
                 
-                if (!evRes.ok || !strRes.ok) throw new Error("API Response Failed!");
+                // ২. স্ট্রিম লিংকের ডাটা আনবে
+                const res2 = await fetch(STREAM_API);
+                streamObj = await res2.json();
 
-                const evData = await evRes.json();
-                streamsData = await strRes.json();
-
-                if (Array.isArray(evData)) {
-                    allEvents = evData.filter(item => item && item.event && item.event.visible);
-                }
+                // ৩. শুধুমাত্র visible ডাটা গুলো আলাদা করে নেবে
+                eventList = Array.isArray(rawEvents) ? rawEvents.filter(x => x && x.event && x.event.visible) : [];
                 
-                renderCategories();
-                renderEvents();
-
-            } catch (error) {
-                container.innerHTML = `
-                    <div class="loader-container">
-                        <i class="fas fa-exclamation-triangle" style="color:#db4437;"></i>
-                        <div class="loader-text" style="color:#db4437;">
-                            ডেটা লোড হতে সমস্যা হয়েছে।<br>
-                            ${error.message}<br><br>
-                            <button onclick="fetchData()" style="padding:8px 15px; background:#1a6b46; color:#fff; border:none; border-radius:5px;">আবার চেষ্টা করুন</button>
-                        </div>
-                    </div>`;
+                renderCats();
+                renderList();
+            } catch (e) {
+                // কোনো কারণে API বন্ধ থাকলে স্ক্রিনে তা দেখাবে
+                document.getElementById('content').innerHTML = `<div style="text-align:center;color:#ff4d4d;padding:20px;">লোডিং ফেইল হয়েছে!<br>সার্ভার থেকে ডেটা আসছে না।</div>`;
             }
         }
 
-        function renderCategories() {
-            const catContainer = document.getElementById('categories-container');
-            let cats = { 'All': allEvents.length };
-            
-            allEvents.forEach(item => {
-                let cat = item.event.category || 'Others';
-                cats[cat] = (cats[cat] || 0) + 1;
+        // ক্যাটাগরি তৈরি করার ফাংশন
+        function renderCats() {
+            let counts = { 'All': eventList.length };
+            eventList.forEach(item => {
+                let c = item.event.category || 'Others';
+                counts[c] = (counts[c] || 0) + 1;
             });
 
-            const icons = {
-                'Cricket': 'fa-cricket', 'Football': 'fa-futbol', 'WWE': 'fa-khanda', 
-                'Racing': 'fa-flag-checkered', 'Baseball': 'fa-baseball', 'Basketball': 'fa-basketball', 'Hockey': 'fa-hockey-puck'
-            };
-
-            let html = `<div class="cat-item ${currentCategory === 'All' ? 'active' : ''}" onclick="setCategory('All')">
-                            <div class="cat-icon-wrap"><i class="fas fa-globe"></i></div>
-                            <span class="cat-badge">${cats['All']}</span>
-                            <span class="cat-name">All</span>
+            let html = `<div class="cat-item ${currentCat === 'All' ? 'active' : ''}" onclick="setCat('All')">
+                            <div class="badge">${counts['All']}</div>
+                            <div class="cat-icon"><i class="fas fa-globe fa-fw"></i></div>
+                            <div class="cat-name">All</div>
                         </div>`;
             
-            Object.keys(cats).forEach(c => {
+            Object.keys(counts).forEach(c => {
                 if (c !== 'All') {
-                    let iconClass = icons[c] || 'fa-trophy';
-                    html += `<div class="cat-item ${currentCategory === c ? 'active' : ''}" onclick="setCategory('${c}')">
-                                <div class="cat-icon-wrap"><i class="fas ${iconClass}"></i></div>
-                                <span class="cat-badge">${cats[c]}</span>
-                                <span class="cat-name">${c}</span>
+                    html += `<div class="cat-item ${currentCat === c ? 'active' : ''}" onclick="setCat('${c}')">
+                                <div class="badge">${counts[c]}</div>
+                                <div class="cat-icon"><i class="fas fa-trophy fa-fw"></i></div>
+                                <div class="cat-name">${c}</div>
                             </div>`;
                 }
             });
-            catContainer.innerHTML = html;
+            document.getElementById('categories').innerHTML = html;
         }
 
-        function setCategory(cat) {
-            currentCategory = cat;
-            renderCategories();
-            renderEvents();
+        function setCat(c) {
+            currentCat = c;
+            renderCats();
+            renderList();
         }
 
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => {
-                    b.classList.remove('active');
-                    b.innerHTML = b.innerText.replace('✓ ', '').trim();
-                });
-                e.target.classList.add('active');
-                e.target.innerHTML = `<i class="fas fa-check"></i> ${e.target.innerText}`;
-                currentFilter = e.target.innerText.replace('✓ ', '').trim();
-                renderEvents();
+        // লাইভ/আপকামিং ফিল্টার ফাংশন
+        function filterData(type) {
+            currentType = type;
+            document.querySelectorAll('.btn').forEach(b => { 
+                b.classList.remove('active'); 
+                b.innerText = b.innerText.replace('✓ ', ''); 
             });
-        });
+            let activeBtn = document.getElementById('btn-' + type.toLowerCase());
+            activeBtn.classList.add('active');
+            activeBtn.innerText = '✓ ' + type;
+            renderList();
+        }
 
-        function renderEvents() {
-            const container = document.getElementById('events-container');
-            container.innerHTML = '';
-
-            let filtered = allEvents;
-            if (currentCategory !== 'All') filtered = filtered.filter(item => item.event.category === currentCategory);
-
-            filtered.forEach(item => {
-                const e = item.event;
-                const timeStatus = getStatus(e.date, e.time);
+        // কার্ড রেন্ডার ফাংশন (যেখানে কোড ক্র্যাশ করতো, সেটাকে সেইফ করা হয়েছে)
+        function renderList() {
+            let html = '';
+            eventList.forEach(item => {
+                const ev = item.event;
                 
-                if (currentFilter === 'Live' && timeStatus.state !== 'live') return;
-                if (currentFilter === 'Upcoming' && timeStatus.state !== 'upcoming') return;
+                // ক্যাটাগরি ফিল্টার চেক
+                if (currentCat !== 'All' && ev.category !== currentCat) return;
 
-                const match = (e.links || '').match(/pro\/(.*?)\.txt/);
-                const streamId = match ? match[1] : null;
-                const stData = streamId ? streamsData[streamId] : null;
+                let statusState = 'upcoming';
+                let statusText = 'Upcoming';
+                let timeShow = ev.time || 'TBA';
+                
+                // টাইমার লজিক (ভুল ফরম্যাট আসলেও কোড ক্র্যাশ করবে না)
+                try {
+                    let dParts = (ev.date||'').split('/');
+                    let tParts = (ev.time||'').split(':');
+                    
+                    if(dParts.length === 3 && tParts.length >= 2) {
+                        let matchDate = new Date(`${dParts[2]}-${dParts[1]}-${dParts[0]}T${tParts[0]}:${tParts[1]}:00`);
+                        let diff = matchDate - new Date();
+                        
+                        if(diff <= 0 && diff > -10800000) {
+                            statusState = 'live'; statusText = '🔴 LIVE';
+                        } else if(diff > 0) {
+                            let mins = Math.floor(diff / 60000);
+                            if(mins < 60) statusText = mins + 'm left';
+                            else statusText = Math.floor(mins/60) + 'h ' + (mins%60) + 'm left';
+                        } else {
+                            statusState = 'finished'; statusText = 'Finished';
+                        }
+                        
+                        // Time Format to AM/PM
+                        let h = parseInt(tParts[0]);
+                        let ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12 || 12;
+                        timeShow = `${h}:${tParts[1]} ${ampm}`;
+                    }
+                } catch(e) { } // ডেট ভুল থাকলেও স্কিপ করে যাবে
 
-                const card = document.createElement('div');
-                card.className = 'event-card';
-                card.onclick = () => toggleStreams(card);
+                // টাইপ ফিল্টার (Live/Upcoming)
+                if (currentType === 'Live' && statusState !== 'live') return;
+                if (currentType === 'Upcoming' && statusState !== 'upcoming') return;
 
+                // ID এক্সট্রাক্ট করে লিংক খোঁজা
+                let sId = null;
+                try { sId = ev.links.split('pro/')[1].split('.txt')[0]; } catch(e){}
+                
                 let streamsHtml = '';
-                if (stData && stData.streams) {
-                    stData.streams.forEach(s => {
-                        if (s.link) streamsHtml += `<a href="${s.link}" target="_blank" class="stream-btn" style="border-left-color:${s.colorHex || 'var(--accent-light-green)'}">${s.name}</a>`;
+                if (sId && streamObj[sId] && streamObj[sId].streams) {
+                    streamObj[sId].streams.forEach(s => {
+                        if(s.link) {
+                            streamsHtml += `<a href="${s.link}" target="_blank" class="stream-link">${s.name}</a>`;
+                        }
                     });
                 }
-                if(!streamsHtml) streamsHtml = '<p style="color:#db4437; font-size:12px; text-align:center;">লিংক আপডেটের কাজ চলছে...</p>';
+                
+                if(!streamsHtml) streamsHtml = '<div style="width:100%;text-align:center;color:#db4437;font-size:12px;">এই মুহূর্তে কোনো লিংক নেই</div>';
 
-                card.innerHTML = `
-                    <div class="event-header"><i class="fas fa-satellite-dish"></i> ${e.category || 'Sports'} | ${e.eventName || 'Event'}</div>
-                    <div class="match-info">
-                        <div class="team">
-                            <img src="${e.teamAFlag || 'https://via.placeholder.com/45'}" alt="">
-                            <span>${e.teamAName || 'Team A'}</span>
+                // কার্ডের ডিজাইন তৈরি
+                html += `
+                    <div class="card" onclick="this.querySelector('.streams').style.display = this.querySelector('.streams').style.display === 'flex' ? 'none' : 'flex'">
+                        <div class="card-title"><i class="fas fa-satellite-dish"></i> ${ev.category || 'Sports'} | ${ev.eventName}</div>
+                        <div class="match-row">
+                            <div class="team">
+                                <img src="${ev.teamAFlag}" onerror="this.src='https://via.placeholder.com/40'">
+                                <div class="team-name">${ev.teamAName}</div>
+                            </div>
+                            <div class="status-col">
+                                ${statusState === 'live' 
+                                    ? `<div class="status-badge status-live">🔴 LIVE</div>` 
+                                    : `<div class="time">${timeShow}</div>
+                                       <div class="date">${ev.date}</div>
+                                       <div class="status-badge">${statusText}</div>`
+                                }
+                            </div>
+                            <div class="team">
+                                <img src="${ev.teamBFlag}" onerror="this.src='https://via.placeholder.com/40'">
+                                <div class="team-name">${ev.teamBName}</div>
+                            </div>
                         </div>
-                        <div class="status-box">
-                            ${timeStatus.state === 'live' 
-                                ? `<div class="status-badge badge-live">🔴 LIVE</div>` 
-                                : `<div class="status-time">${timeFormat(e.time)}</div>
-                                   <div class="status-date">${e.date}</div>
-                                   <div class="status-badge badge-upcoming">${timeStatus.text}</div>`
-                            }
-                        </div>
-                        <div class="team">
-                            <img src="${e.teamBFlag || 'https://via.placeholder.com/45'}" alt="">
-                            <span>${e.teamBName || 'Team B'}</span>
-                        </div>
+                        <!-- ভেতরে থাকা লিংকগুলো (ক্লিক করলে বের হবে) -->
+                        <div class="streams">${streamsHtml}</div>
                     </div>
-                    <div class="streams-box">${streamsHtml}</div>
                 `;
-                container.appendChild(card);
             });
+            
+            document.getElementById('content').innerHTML = html || '<div style="text-align:center;color:#88929e;padding:20px;">কোনো ইভেন্ট নেই</div>';
         }
 
-        function toggleStreams(card) {
-            const box = card.querySelector('.streams-box');
-            box.style.display = box.style.display === 'block' ? 'none' : 'block';
-        }
-
-        function timeFormat(timeStr) {
-            if(!timeStr) return 'TBA';
-            let parts = timeStr.split(':');
-            let h = parseInt(parts[0]) || 12;
-            let m = parts[1] || '00';
-            let ampm = h >= 12 ? 'PM' : 'AM';
-            h = h % 12 || 12;
-            return `${h}:${m} ${ampm}`;
-        }
-
-        function getStatus(dateStr, timeStr) {
-            try {
-                if(!dateStr || !timeStr) return { state: 'finished', text: 'TBA' };
-                const [day, month, year] = dateStr.split('/');
-                const [hour, min, sec] = timeStr.split(':');
-                
-                const eventDate = new Date(`${year}-${month}-${day}T${hour || '00'}:${min || '00'}:${sec || '00'}`);
-                if(isNaN(eventDate.getTime())) return { state: 'upcoming', text: 'Upcoming' };
-
-                const diffMs = eventDate - new Date();
-                
-                if (diffMs <= 0 && diffMs > -10800000) return { state: 'live', text: 'Live' };
-                if (diffMs > 0) {
-                    const totalMins = Math.floor(diffMs / 60000);
-                    if (totalMins < 60) return { state: 'upcoming', text: `${totalMins}m left` };
-                    return { state: 'upcoming', text: `${Math.floor(totalMins / 60)}h ${totalMins % 60}m left` };
-                }
-                return { state: 'finished', text: 'Finished' };
-            } catch(e) {
-                return { state: 'upcoming', text: 'Upcoming' };
-            }
-        }
-
-        // Initialize Call
-        fetchData();
+        // শুরুতে অ্যাপ লোড করা
+        initApp();
     </script>
 </body>
 </html>
