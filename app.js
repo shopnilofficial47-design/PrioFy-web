@@ -1,69 +1,350 @@
-:root {
-    --bg-color: #0b0f12;
-    --card-bg: #141a1f;
-    --accent-green: #1a6b46;
-    --accent-light-green: #2cb36a;
-    --text-main: #ffffff;
-    --text-muted: #88929e;
-    --border-color: #1e2933;
+// ======================
+// Sports Stream App v2
+// Match-specific streams + HLS Player
+// ======================
+
+let eventsData = [];
+let streamsData = {};
+let currentCategory = 'all';
+let hlsInstance = null;
+
+// --- Load Data (Live APIs with Firebase Fallback) ---
+async function loadData() {
+  try {
+    const [eventsRes, streamsRes] = await Promise.all([
+      fetch('https://ratulxadia-playz-cats-event.hf.space/api/events'),
+      fetch('https://ratul-liv-default-rtdb.asia-southeast1.firebasedatabase.app/.json')
+    ]);
+
+    if (!eventsRes.ok || !streamsRes.ok) {
+      throw new Error('API লোড করতে সমস্যা হয়েছে');
+    }
+
+    eventsData = await eventsRes.json();
+    streamsData = await streamsRes.json();
+
+    if (streamsData.homepage_notice) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'background:#1a2338;border:1px solid #08c7d6;color:#08c7d6;padding:10px 16px;border-radius:10px;margin:16px 0;font-size:0.85rem;text-align:center;';
+      notice.textContent = streamsData.homepage_notice.trim();
+      const main = document.querySelector('main.container');
+      if (main) main.insertBefore(notice, main.firstChild);
+    }
+
+    renderEvents();
+    renderChannels();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('events-list').innerHTML =
+      '<div class="empty" style="color:#ff4757;"><i class="fas fa-exclamation-triangle"></i> ডাটা লোড করতে সমস্যা হয়েছে। ইন্টারনেট চেক করুন।</div>';
+  }
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-
-body { 
-    background-color: var(--bg-color); 
-    color: var(--text-main); 
-    padding-bottom: 20px; /* Adjusted since there is no bottom nav */
+// --- Helpers ---
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':');
+  const hour = parseInt(h, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const h12 = hour % 12 || 12;
+  return h12 + ':' + m + ' ' + ampm;
 }
 
-/* Header */
-.app-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #0b0f12; }
-.left-header { display: flex; align-items: center; gap: 15px; font-size: 20px; }
-.logo { font-size: 24px; color: #fff; text-shadow: 2px 2px 0 #fbbf24; }
-.right-header { display: flex; gap: 15px; font-size: 18px; color: #fff; cursor: pointer;}
+function extractKeyFromLinks(linksField) {
+  if (!linksField || typeof linksField !== 'string') return null;
+  return linksField.replace(/^pro\//, '').replace(/\.txt$/, '').trim() || null;
+}
 
-/* Ticker */
-.ticker-wrap { background: #0e151a; border: 1px solid var(--accent-green); padding: 5px; margin: 10px; border-radius: 5px; font-size: 13px; color: var(--text-muted); }
+function getStreamLinks(event) {
+  const links = [];
+  const seen = new Set();
 
-/* Categories */
-.categories-container { display: flex; overflow-x: auto; padding: 10px 15px; gap: 15px; align-items: center; }
-.categories-container::-webkit-scrollbar { display: none; }
-.cat-item { display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; min-width: 60px; }
-.cat-icon-wrap { width: 50px; height: 50px; background: #1f272d; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid transparent; transition: 0.3s; }
-.cat-icon-wrap img, .cat-icon-wrap i { width: 20px; font-size: 20px; color: var(--text-muted); }
-.cat-item.active .cat-icon-wrap { border-color: var(--accent-light-green); }
-.cat-item.active .cat-icon-wrap i { color: var(--text-main); }
-.cat-badge { position: absolute; top: -2px; right: 2px; background: red; color: white; font-size: 10px; font-weight: bold; border-radius: 10px; padding: 2px 6px; }
-.cat-name { font-size: 12px; margin-top: 5px; color: var(--text-muted); font-weight: 500; }
-.cat-item.active .cat-name { color: #fff; font-weight: bold; }
+  function add(name, tag, url) {
+    if (!url) return;
+    let clean = url.split('|')[0].trim();
+    if (!clean || seen.has(clean)) return;
+    seen.add(clean);
+    links.push({ name: name || 'Stream', tag: tag || 'HD', url: clean });
+  }
 
-/* Filters */
-.filters-container { display: flex; gap: 10px; padding: 0 15px 15px; overflow-x: auto; }
-.filters-container::-webkit-scrollbar { display: none; }
-.filter-btn { background: #1f272d; color: var(--text-muted); border: none; padding: 6px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-.filter-btn.active { background: #183d2e; color: #fff; border: 1px solid var(--accent-green); }
+  const key = extractKeyFromLinks(event.links);
+  const playz = streamsData['playz-streams'] || {};
 
-/* Loader */
-.loader { text-align: center; font-size: 14px; color: var(--accent-light-green); margin-top: 20px; padding: 20px; }
+  // 1. Exact Match
+  if (key && playz[key] && playz[key].streams) {
+    playz[key].streams.forEach(function(s) {
+      add(s.name || s.linkTag || 'Stream', s.linkTag || 'HD', s.link);
+    });
+  }
 
-/* Events Cards */
-#events-container { padding: 0 15px; display: flex; flex-direction: column; gap: 15px; }
-.event-card { background: var(--card-bg); border: 1px solid var(--accent-green); border-radius: 10px; padding: 15px; cursor: pointer; }
-.event-header { text-align: center; font-size: 12px; color: var(--text-main); font-weight: 600; margin-bottom: 15px; }
-.event-header i { color: var(--accent-light-green); margin-right: 5px; }
-.match-info { display: flex; justify-content: space-between; align-items: center; }
-.team { text-align: center; flex: 1; }
-.team img { width: 45px; height: 45px; border-radius: 50%; object-fit: contain; margin-bottom: 8px; background: #fff; padding: 2px;}
-.team span { display: block; font-size: 13px; font-weight: bold; color: #fff; }
+  // 2. Fuzzy match (Name Matching)
+  if (links.length === 0) {
+    const terms = [event.teamAName || '', event.teamBName || '', event.eventName || '']
+      .filter(function(t) { return t && t.length > 2; })
+      .map(function(t) { return t.toLowerCase(); });
 
-.status-box { flex: 1; text-align: center; }
-.status-time { font-size: 16px; font-weight: bold; color: #08C7D6; }
-.status-date { font-size: 11px; color: var(--text-muted); margin: 3px 0; }
-.status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
-.badge-upcoming { background: rgba(44, 179, 106, 0.15); color: var(--accent-light-green); }
-.badge-live { background: rgba(219, 68, 55, 0.15); color: #db4437; }
+    Object.keys(playz).forEach(function(k) {
+      var decoded = '';
+      try {
+        decoded = atob(k.replace(/-/g, '+').replace(/_/g, '/')).toLowerCase();
+      } catch (e) {
+        decoded = k.toLowerCase();
+      }
+      var matched = terms.some(function(t) {
+        return decoded.indexOf(t) !== -1 || k.toLowerCase().indexOf(t) !== -1;
+      });
+      if (matched && playz[k].streams) {
+        playz[k].streams.forEach(function(s) {
+          add(s.name || s.linkTag || 'Stream', s.linkTag || 'HD', s.link);
+        });
+      }
+    });
+  }
 
-/* Streams Box */
-.streams-box { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); }
-.stream-btn { display: inline-block; width: calc(50% - 5px); background: #1f272d; color: #fff; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border-left: 3px solid var(--accent-light-green); }
-.stream-btn:nth-child(even) { margin-left: 5px; }
+  // 3. Fallback Categories
+  if (links.length === 0 && streamsData['live-streams']) {
+    var cat = (event.category || '').toLowerCase();
+    var allLive = Object.values(streamsData['live-streams']).flat();
+    var prefer = /willow|sony|fancode|sky|tnt|espn|bein|dazn|fox|apple|fubo/i;
+    if (cat.indexOf('cricket') !== -1) prefer = /willow|sony|fancode|sky.*cric|fox.*cric/i;
+    if (cat.indexOf('motor') !== -1 || cat.indexOf('formula') !== -1) prefer = /sky|f1|tnt|apple|spor/i;
+
+    allLive.forEach(function(s) {
+      if (s.link && prefer.test(s.title || '')) {
+        add(s.title, s.type === '1' ? 'FHD' : 'HD', s.link);
+      }
+    });
+  }
+
+  return links;
+}
+
+// --- HLS Player ---
+function stopPlayer() {
+  var video = document.getElementById('video-player');
+  if (hlsInstance) {
+    hlsInstance.destroy();
+    hlsInstance = null;
+  }
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+  document.getElementById('player-wrap').classList.add('hidden');
+  var status = document.getElementById('player-status');
+  status.classList.remove('show');
+  status.textContent = '';
+}
+
+function playStream(url, name) {
+  var video = document.getElementById('video-player');
+  var wrap = document.getElementById('player-wrap');
+  var status = document.getElementById('player-status');
+
+  stopPlayer();
+  wrap.classList.remove('hidden');
+  status.textContent = 'লোড হচ্ছে: ' + (name || '');
+  status.classList.add('show');
+
+  var isM3u8 = url.indexOf('.m3u8') !== -1;
+
+  if (isM3u8 && window.Hls && Hls.isSupported()) {
+    hlsInstance = new Hls({ enableWorker: true, maxBufferLength: 30 });
+    hlsInstance.loadSource(url);
+    hlsInstance.attachMedia(video);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+      status.textContent = 'চলছে: ' + (name || '');
+      video.play().catch(function() {});
+    });
+    hlsInstance.on(Hls.Events.ERROR, function(e, data) {
+      if (data.fatal) {
+        status.textContent = 'প্লেয়ারে সমস্যা। VLC / MX Player এ লিংক খুলুন।';
+      }
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    video.addEventListener('loadedmetadata', function() {
+      status.textContent = 'চলছে: ' + (name || '');
+      video.play().catch(function() {});
+    }, { once: true });
+  } else {
+    status.textContent = 'নতুন ট্যাবে খোলা হচ্ছে...';
+    window.open(url, '_blank');
+  }
+}
+
+// --- Render Events ---
+function renderEvents() {
+  var container = document.getElementById('events-list');
+  var filtered = eventsData;
+
+  if (currentCategory !== 'all') {
+    filtered = eventsData.filter(function(e) {
+      var cat = (e.event && e.event.category || e.category || '').toLowerCase();
+      return cat === currentCategory.toLowerCase();
+    });
+  }
+
+  filtered = filtered.slice().sort(function(a, b) {
+    var va = (a.event && a.event.visible != null ? a.event.visible : a.visible) === true;
+    var vb = (b.event && b.event.visible != null ? b.event.visible : b.visible) === true;
+    return (vb ? 1 : 0) - (va ? 1 : 0);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty">এই ক্যাটাগরিতে কোনো ম্যাচ নেই</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(function(item, idx) {
+    var e = item.event || item;
+    var live = e.visible === true;
+    var teamA = e.teamAName || 'Team A';
+    var teamB = e.teamBName || 'Team B';
+    var flagA = e.teamAFlag || '';
+    var flagB = e.teamBFlag || '';
+    var logo = e.eventLogo || '';
+    var name = e.eventName || 'Match';
+    var category = e.category || '';
+    var time = formatTime(e.time);
+    var date = e.date || '';
+
+    return '<div class="event-card ' + (live ? 'live' : '') + '" data-idx="' + idx + '" onclick="openStreamModal(' + idx + ')">' +
+      '<div class="event-header">' +
+        (logo ? '<img class="event-logo" src="' + logo + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+        '<span class="event-name">' + name + '</span>' +
+        '<span class="event-category">' + category + '</span>' +
+      '</div>' +
+      '<div class="teams">' +
+        '<div class="team">' +
+          (flagA ? '<img class="team-flag" src="' + flagA + '" onerror="this.style.display=\'none\'">' : '') +
+          '<span class="team-name">' + teamA + '</span>' +
+        '</div>' +
+        '<span class="vs">VS</span>' +
+        '<div class="team">' +
+          (flagB ? '<img class="team-flag" src="' + flagB + '" onerror="this.style.display=\'none\'">' : '') +
+          '<span class="team-name">' + teamB + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="event-meta">' +
+        '<span>' + date + ' • ' + time + '</span>' +
+        '<span>' + (live ? '<span class="live-badge">LIVE</span> ' : '') +
+        '<span class="links-count" style="color:#08C7D6"><i class="fas fa-play-circle"></i> Watch</span></span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// --- Render Channels ---
+function renderChannels() {
+  var container = document.getElementById('channels-list');
+  var channels = streamsData['sports-channels'] || {};
+  var list = Object.entries(channels);
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty">কোনো চ্যানেল পাওয়া যায়নি</div>';
+    return;
+  }
+
+  container.innerHTML = list.map(function(pair) {
+    var key = pair[0], ch = pair[1];
+    return '<div class="channel-card" onclick="openChannel(\'' + encodeURIComponent(ch.link || '') + '\', \'' + (ch.name || key).replace(/'/g, "\\'") + '\')">' +
+      (ch.logo ? '<img class="channel-logo" src="' + ch.logo + '" onerror="this.style.display=\'none\'">' : '<div class="channel-logo" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem">📺</div>') +
+      '<div class="channel-info"><h3>' + (ch.name || key) + '</h3><p>Live TV</p></div>' +
+    '</div>';
+  }).join('');
+}
+
+// --- Modal Functionality ---
+function openStreamModal(idx) {
+  var filtered = eventsData;
+  if (currentCategory !== 'all') {
+    filtered = eventsData.filter(function(e) {
+      var cat = (e.event && e.event.category || e.category || '').toLowerCase();
+      return cat === currentCategory.toLowerCase();
+    });
+  }
+  filtered = filtered.slice().sort(function(a, b) {
+    var va = (a.event && a.event.visible != null ? a.event.visible : a.visible) === true;
+    var vb = (b.event && b.event.visible != null ? b.event.visible : b.visible) === true;
+    return (vb ? 1 : 0) - (va ? 1 : 0);
+  });
+
+  var item = filtered[idx];
+  if (!item) return;
+
+  var e = item.event || item;
+  var title = ((e.teamAName || '') + ' vs ' + (e.teamBName || '')).trim() || e.eventName || 'Match';
+  document.getElementById('modal-title').textContent = title;
+
+  stopPlayer();
+
+  var links = getStreamLinks(e);
+  var linksContainer = document.getElementById('modal-links');
+
+  if (links.length === 0) {
+    linksContainer.innerHTML = '<p style="color:#ff4757; text-align:center; padding:10px;">এই ম্যাচের জন্য স্ট্রিম লিংক পাওয়া যায়নি</p>';
+  } else {
+    linksContainer.innerHTML = links.map(function(l) {
+      if (l.url) {
+        return '<a class="stream-link" href="javascript:void(0)" data-url="' + l.url.replace(/"/g, '&quot;') + '" data-name="' + (l.name || '').replace(/"/g, '&quot;') + '" onclick="onLinkClick(this)">' +
+          '<span class="name">' + l.name + '</span><span class="tag">' + l.tag + '</span></a>';
+      }
+      return '<div class="stream-link" style="opacity:0.6;cursor:default;"><span class="name">' + l.name + '</span><span class="tag">' + l.tag + '</span></div>';
+    }).join('');
+  }
+
+  document.getElementById('stream-modal').classList.remove('hidden');
+}
+
+function onLinkClick(el) {
+  var url = el.getAttribute('data-url');
+  var name = el.getAttribute('data-name');
+  document.querySelectorAll('.stream-link').forEach(function(a) { a.classList.remove('active'); });
+  el.classList.add('active');
+  playStream(url, name);
+}
+
+function openChannel(url, name) {
+  document.getElementById('modal-title').textContent = name;
+  stopPlayer();
+  var decoded = decodeURIComponent(url);
+  document.getElementById('modal-links').innerHTML =
+    '<a class="stream-link active" href="javascript:void(0)" data-url="' + decoded + '" data-name="' + name + '" onclick="onLinkClick(this)">' +
+    '<span class="name">Watch Live</span><span class="tag">LIVE</span></a>';
+  document.getElementById('stream-modal').classList.remove('hidden');
+  playStream(decoded, name);
+}
+
+function closeModal() {
+  stopPlayer();
+  document.getElementById('stream-modal').classList.add('hidden');
+}
+
+// --- Listeners ---
+document.querySelectorAll('.nav-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    var tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById(tab + '-tab').classList.add('active');
+  });
+});
+
+document.querySelectorAll('.filter-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentCategory = btn.dataset.category;
+    renderEvents();
+  });
+});
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('stream-modal').addEventListener('click', function(e) {
+  if (e.target.id === 'stream-modal') closeModal();
+});
+
+loadData();
