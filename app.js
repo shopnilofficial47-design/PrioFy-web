@@ -1,203 +1,69 @@
-const API_EVENTS = 'https://ratulxadia-playz-cats-event.hf.space/api/events';
-const API_STREAMS = 'https://adiaxratul-playz-link-send.hf.space/api/live-stream';
-
-let allEvents = [];
-let streamsData = {};
-let currentCategory = 'All';
-let currentFilter = 'All';
-
-async function fetchData() {
-    const loader = document.getElementById('loader');
-    loader.style.display = 'block';
-    loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ডেটা লোড হচ্ছে... (অনুগ্রহ করে অপেক্ষা করুন)';
-    
-    // আগের রেন্ডার করা কার্ডগুলো মুছে ফেলা
-    document.querySelectorAll('.event-card').forEach(el => el.remove());
-
-    try {
-        const [evRes, strRes] = await Promise.all([fetch(API_EVENTS), fetch(API_STREAMS)]);
-        
-        if (!evRes.ok || !strRes.ok) {
-            throw new Error(`API Error: Events(${evRes.status}), Streams(${strRes.status})`);
-        }
-
-        const evData = await evRes.json();
-        streamsData = await strRes.json();
-
-        // শুধুমাত্র visible ইভেন্ট প্রসেস করা (ডেটা সেফটি চেক)
-        if (Array.isArray(evData)) {
-            allEvents = evData.filter(item => item && item.event && item.event.visible);
-        } else {
-            allEvents = [];
-        }
-        
-        // লোডার গায়েব করা
-        loader.style.display = 'none';
-
-        renderCategories();
-        renderEvents();
-    } catch (e) {
-        // যদি API ফেইল করে তবে স্ক্রিনে এরর দেখাবে
-        loader.innerHTML = `<span style="color:#db4437;"><i class="fas fa-exclamation-triangle"></i> সমস্যা হয়েছে: API সার্ভার ডাউন অথবা CORS ব্লক করছে। <br><br> ${e.message}</span>`;
-        console.error(e);
-    }
+:root {
+    --bg-color: #0b0f12;
+    --card-bg: #141a1f;
+    --accent-green: #1a6b46;
+    --accent-light-green: #2cb36a;
+    --text-main: #ffffff;
+    --text-muted: #88929e;
+    --border-color: #1e2933;
 }
 
-// ক্যাটাগরি লিস্ট এবং ব্যাজ কাউন্ট তৈরি করা
-function renderCategories() {
-    const catContainer = document.getElementById('categories-container');
-    let cats = { 'All': allEvents.length };
-    
-    allEvents.forEach(item => {
-        let cat = item.event.category || 'Others';
-        cats[cat] = (cats[cat] || 0) + 1;
-    });
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
 
-    let html = `<div class="cat-item ${currentCategory === 'All' ? 'active' : ''}" onclick="setCategory('All')">
-                    <div class="cat-icon-wrap"><i class="fas fa-globe"></i></div>
-                    <span class="cat-badge">${cats['All']}</span>
-                    <span class="cat-name">All</span>
-                </div>`;
-    
-    Object.keys(cats).forEach(c => {
-        if (c !== 'All') {
-            html += `<div class="cat-item ${currentCategory === c ? 'active' : ''}" onclick="setCategory('${c}')">
-                        <div class="cat-icon-wrap"><i class="fas fa-trophy"></i></div>
-                        <span class="cat-badge">${cats[c]}</span>
-                        <span class="cat-name">${c}</span>
-                    </div>`;
-        }
-    });
-    catContainer.innerHTML = html;
+body { 
+    background-color: var(--bg-color); 
+    color: var(--text-main); 
+    padding-bottom: 20px; /* Adjusted since there is no bottom nav */
 }
 
-function setCategory(cat) {
-    currentCategory = cat;
-    renderCategories();
-    renderEvents();
-}
+/* Header */
+.app-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #0b0f12; }
+.left-header { display: flex; align-items: center; gap: 15px; font-size: 20px; }
+.logo { font-size: 24px; color: #fff; text-shadow: 2px 2px 0 #fbbf24; }
+.right-header { display: flex; gap: 15px; font-size: 18px; color: #fff; cursor: pointer;}
 
-// ফিল্টার সেট করা (Live / Upcoming)
-document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        currentFilter = e.target.innerText.replace('✓ ', '').trim();
-        renderEvents();
-    });
-});
+/* Ticker */
+.ticker-wrap { background: #0e151a; border: 1px solid var(--accent-green); padding: 5px; margin: 10px; border-radius: 5px; font-size: 13px; color: var(--text-muted); }
 
-// ইভেন্ট কার্ডগুলো রেন্ডার করা
-function renderEvents() {
-    const container = document.getElementById('events-container');
-    // কার্ডগুলো ক্লিয়ার করা, কিন্তু লোডার ডিভ রেখে দেওয়া
-    Array.from(container.children).forEach(child => {
-        if (child.id !== 'loader') child.remove();
-    });
+/* Categories */
+.categories-container { display: flex; overflow-x: auto; padding: 10px 15px; gap: 15px; align-items: center; }
+.categories-container::-webkit-scrollbar { display: none; }
+.cat-item { display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; min-width: 60px; }
+.cat-icon-wrap { width: 50px; height: 50px; background: #1f272d; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid transparent; transition: 0.3s; }
+.cat-icon-wrap img, .cat-icon-wrap i { width: 20px; font-size: 20px; color: var(--text-muted); }
+.cat-item.active .cat-icon-wrap { border-color: var(--accent-light-green); }
+.cat-item.active .cat-icon-wrap i { color: var(--text-main); }
+.cat-badge { position: absolute; top: -2px; right: 2px; background: red; color: white; font-size: 10px; font-weight: bold; border-radius: 10px; padding: 2px 6px; }
+.cat-name { font-size: 12px; margin-top: 5px; color: var(--text-muted); font-weight: 500; }
+.cat-item.active .cat-name { color: #fff; font-weight: bold; }
 
-    let filtered = allEvents;
-    if (currentCategory !== 'All') {
-        filtered = filtered.filter(item => item.event.category === currentCategory);
-    }
+/* Filters */
+.filters-container { display: flex; gap: 10px; padding: 0 15px 15px; overflow-x: auto; }
+.filters-container::-webkit-scrollbar { display: none; }
+.filter-btn { background: #1f272d; color: var(--text-muted); border: none; padding: 6px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.filter-btn.active { background: #183d2e; color: #fff; border: 1px solid var(--accent-green); }
 
-    filtered.forEach(item => {
-        const e = item.event;
-        const timeStatus = getStatus(e.date, e.time);
-        
-        // Live/Upcoming Filter logic
-        if (currentFilter === 'Live' && timeStatus.state !== 'live') return;
-        if (currentFilter === 'Upcoming' && timeStatus.state !== 'upcoming') return;
+/* Loader */
+.loader { text-align: center; font-size: 14px; color: var(--accent-light-green); margin-top: 20px; padding: 20px; }
 
-        // ID এক্সট্র্যাক্ট করা "pro/ID.txt" থেকে
-        const match = (e.links || '').match(/pro\/(.*?)\.txt/);
-        const streamId = match ? match[1] : null;
-        const stData = streamId ? streamsData[streamId] : null;
+/* Events Cards */
+#events-container { padding: 0 15px; display: flex; flex-direction: column; gap: 15px; }
+.event-card { background: var(--card-bg); border: 1px solid var(--accent-green); border-radius: 10px; padding: 15px; cursor: pointer; }
+.event-header { text-align: center; font-size: 12px; color: var(--text-main); font-weight: 600; margin-bottom: 15px; }
+.event-header i { color: var(--accent-light-green); margin-right: 5px; }
+.match-info { display: flex; justify-content: space-between; align-items: center; }
+.team { text-align: center; flex: 1; }
+.team img { width: 45px; height: 45px; border-radius: 50%; object-fit: contain; margin-bottom: 8px; background: #fff; padding: 2px;}
+.team span { display: block; font-size: 13px; font-weight: bold; color: #fff; }
 
-        const card = document.createElement('div');
-        card.className = 'event-card';
-        card.onclick = () => toggleStreams(card); // কার্ডে ক্লিক করলে স্ট্রিম ওপেন হবে
+.status-box { flex: 1; text-align: center; }
+.status-time { font-size: 16px; font-weight: bold; color: #08C7D6; }
+.status-date { font-size: 11px; color: var(--text-muted); margin: 3px 0; }
+.status-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+.badge-upcoming { background: rgba(44, 179, 106, 0.15); color: var(--accent-light-green); }
+.badge-live { background: rgba(219, 68, 55, 0.15); color: #db4437; }
 
-        let streamsHtml = '';
-        if (stData && stData.streams) {
-            stData.streams.forEach(s => {
-                if (s.link) {
-                    streamsHtml += `<a href="${s.link}" target="_blank" class="stream-btn" style="border-left-color:${s.colorHex || 'var(--accent-light-green)'}">${s.name}</a>`;
-                }
-            });
-        }
-        if(!streamsHtml) streamsHtml = '<p style="color:#db4437; font-size:12px; text-align:center;">No direct stream links available</p>';
-
-        card.innerHTML = `
-            <div class="event-header"><i class="fas fa-satellite-dish"></i> ${e.category || 'Sports'} | ${e.eventName || 'Event'}</div>
-            <div class="match-info">
-                <div class="team">
-                    <img src="${e.teamAFlag || 'https://via.placeholder.com/45'}" alt="">
-                    <span>${e.teamAName || 'Team A'}</span>
-                </div>
-                <div class="status-box">
-                    ${timeStatus.state === 'live' 
-                        ? `<div class="status-badge badge-live">🔴 LIVE</div>` 
-                        : `<div class="status-time">${timeFormat(e.time)}</div>
-                           <div class="status-date">${e.date}</div>
-                           <div class="status-badge badge-upcoming">${timeStatus.text}</div>`
-                    }
-                </div>
-                <div class="team">
-                    <img src="${e.teamBFlag || 'https://via.placeholder.com/45'}" alt="">
-                    <span>${e.teamBName || 'Team B'}</span>
-                </div>
-            </div>
-            <div class="streams-box">${streamsHtml}</div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function toggleStreams(card) {
-    const box = card.querySelector('.streams-box');
-    box.style.display = box.style.display === 'block' ? 'none' : 'block';
-}
-
-// টাইম ফরম্যাট এবং সেফটি লজিক
-function timeFormat(timeStr) {
-    if(!timeStr) return 'TBA';
-    let parts = timeStr.split(':');
-    let h = parseInt(parts[0]) || 12;
-    let m = parts[1] || '00';
-    let ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${h}:${m} ${ampm}`;
-}
-
-// সেফ কাউন্টডাউন টাইমার
-function getStatus(dateStr, timeStr) {
-    try {
-        if(!dateStr || !timeStr) return { state: 'finished', text: 'TBA' };
-        
-        const [day, month, year] = dateStr.split('/');
-        const [hour, min, sec] = timeStr.split(':');
-        
-        const eventDate = new Date(`${year}-${month}-${day}T${hour || '00'}:${min || '00'}:${sec || '00'}`);
-        if(isNaN(eventDate.getTime())) return { state: 'upcoming', text: 'Upcoming' };
-
-        const now = new Date();
-        const diffMs = eventDate - now;
-        
-        // ইভেন্ট টাইম পার হয়ে গেলে এবং ৩ ঘণ্টার মধ্যে হলে Live দেখাবে
-        if (diffMs <= 0 && diffMs > -10800000) return { state: 'live', text: 'Live' };
-        
-        if (diffMs > 0) {
-            const totalMins = Math.floor(diffMs / 60000);
-            if (totalMins < 60) return { state: 'upcoming', text: `${totalMins}m left` };
-            const h = Math.floor(totalMins / 60);
-            const m = totalMins % 60;
-            return { state: 'upcoming', text: `${h}h ${m}m left` };
-        }
-        return { state: 'finished', text: 'Finished' };
-    } catch(e) {
-        return { state: 'upcoming', text: 'Upcoming' };
-    }
-}
-
-// Start
-document.addEventListener('DOMContentLoaded', fetchData);
+/* Streams Box */
+.streams-box { display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); }
+.stream-btn { display: inline-block; width: calc(50% - 5px); background: #1f272d; color: #fff; text-decoration: none; padding: 10px; border-radius: 5px; font-size: 12px; font-weight: bold; text-align: center; margin-bottom: 10px; border-left: 3px solid var(--accent-light-green); }
+.stream-btn:nth-child(even) { margin-left: 5px; }
